@@ -1,0 +1,29 @@
+{
+  "name": "le-store-mongo",
+  "version": "1.0.0",
+  "description": "distributed and/or local persistence for letsencrypt-node",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"one\" && exit 0;"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Daplie/le-store-mongo.git"
+  },
+  "keywords": [
+    "letsencrypt-express",
+    "letsencrypt",
+    "mongodb",
+    "mongo"
+  ],
+  "author": "Rex Fatahi <rex@aug2uag.com>, AJ ONeal <coolaj86@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Daplie/le-store-mongo/issues"
+  },
+  "homepage": "https://github.com/Daplie/le-store-mongo#readme",
+  "dependencies": {
+    "mongodb": "^2.2.5",
+    "steed": "^1.1.3"
+  }
+}

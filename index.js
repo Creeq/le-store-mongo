@@ -1,8 +1,12 @@
 'use strict';
 
+var MongoStore = require('./persistence/mongostore');
+
 module.exports.create = function (options) {
-
-
+  var was = this;
+  if (!was.db) {
+    was.db = new MongoStore();
+  };
 
   var defaults = {};
 
@@ -14,14 +18,14 @@ module.exports.create = function (options) {
       // opts.accountId // optional
       
       // check db and return null or keypair object with one of privateKeyPem or privateKeyJwk
-      cb(null, { privateKeyPem: '...', privateKeyJwk: {} });
+      was.db && was.db.getAccount(opts, cb);
     }
   , setKeypair: function (opts, keypair, cb) {
       // opts.email // optional
       // opts.accountId // optional
       
       // SAVE to db (as PEM and/or JWK) and index each domain in domains to this keypair
-      cb(null, keypair);
+      was.db && was.db.setAccount(opts, keypair, cb);
     }
   , check: function (opts, cb) {
       // opts.email // optional
@@ -29,7 +33,7 @@ module.exports.create = function (options) {
       // opts.domains // optional
       
       // return account from db if it exists, otherwise null
-      cb(null, { id: '...', keypair: { privateKeyJwk: {} }, domains: [] });
+      was.db && was.db.getAccount(opts, cb);
     }
   , set: function (opts, reg, cb) {
       // opts.email
@@ -37,7 +41,7 @@ module.exports.create = function (options) {
       // reg.receipt // response from acme server
       
       
-      cb(null, { id: '...', email: opts.email, keypair: reg.keypair, receipt: reg.receipt });
+      was.db && was.db.setAccount(opts, reg, cb);
     }
   };
 
@@ -48,13 +52,13 @@ module.exports.create = function (options) {
       // opts.domains
       
       // check db and return null or keypair object with one of privateKeyPem or privateKeyJwk
-      cb(null, { privateKeyPem: '...', privateKeyJwk: {} });
+      was.db && was.db.getCertificate(opts, cb);
     }
   , setKeypair: function (opts, keypair, cb) {
       // opts.domains
       
       // SAVE to db (as PEM and/or JWK) and index each domain in domains to this keypair
-      cb(null, keypair);
+      was.db && was.db.setCertificate(opts, keypair, cb);
     }
   , check: function (opts, cb) {
       // You will be provided one of these (which should be tried in this order)
@@ -65,7 +69,7 @@ module.exports.create = function (options) {
       // return certificate PEMs from db if they exist, otherwise null
       // optionally include expiresAt and issuedAt, if they are known exactly
       // (otherwise they will be read from the cert itself later)
-      cb(null, { privkey: 'PEM', cert: 'PEM', chain: 'PEM', domains: [], accountId: '...' });
+      was.db && was.db.getCertificate(opts, cb);
     }
   , set: function (opts, pems, cb) {
       // opts.domains
@@ -77,7 +81,7 @@ module.exports.create = function (options) {
       // pems.chain
       
       // SAVE to the database, index the email address, the accountId, and alias the domains
-      cb(null, pems);
+      was.db && was.db.setCertificate(opts, pems, cb);
     }
   };
 
