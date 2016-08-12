@@ -1,6 +1,6 @@
 'use strict';
 
-var MongoStore = require('./persistence/mongostore');
+var MongoStore = require('./src/mongostore');
 
 module.exports.create = function (options) {
   var was = this;
