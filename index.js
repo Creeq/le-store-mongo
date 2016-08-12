@@ -3,7 +3,7 @@
 var MongoStore = require('./src/mongostore');
 
 module.exports.create = function (options) {
-  var was = this;
+  var was = {};
   if (!was.db) {
     was.db = new MongoStore();
   };
