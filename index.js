@@ -5,7 +5,9 @@ var MongoStore = require('./src/mongostore');
 module.exports.create = function (options) {
   var was = {};
   if (!was.db) {
-    was.db = new MongoStore();
+    new MongoStore({}, function(err, db) {
+      if (db) was.db = db;
+    });
   };
 
   var defaults = {};
@@ -16,7 +18,7 @@ module.exports.create = function (options) {
     checkKeypair: function (opts, cb) {
       // opts.email // optional
       // opts.accountId // optional
-      
+
       // check db and return null or keypair object with one of privateKeyPem or privateKeyJwk
       was.db && was.db.getAccount(opts, cb);
     }

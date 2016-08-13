@@ -80,9 +80,28 @@ function MongoStore(options, done) {
 
   // Connect to the db
   if (options.connection) {
-    connected(null, this.options.connection);
+    connected(null, options.connection);
   } else {
-    MongoClient.connect(this.options.url, this.options.mongo, connected);
+    options.url = options.url || 'mongodb://localhost:27017/letsencrypt-node';
+    options.mongo = options.mongo || {
+                                                  "db": {
+                                                      "native_parser": true
+                                                  },
+                                                  "server": {
+                                                      "socketOptions": {
+                                                          "connectTimeoutMS": 1000,
+                                                          "keepAlive": 1
+                                                      },
+                                                      "auto_reconnect": true
+                                                  },
+                                                  "replset": {
+                                                      "socketOptions": {
+                                                          "keepAlive": 1,
+                                                          "connectTimeoutMS": 1000
+                                                      }
+                                                  }
+                                              }
+    MongoClient.connect(options.url, options.mongo, connected);
   }
 }
 
