@@ -30,6 +30,7 @@ var tests = [
 
   // SANITY test that an unregistered email returns no results
   function () {
+    console.log('1')
     return leStore.accounts.checkKeypairAsync({
       email: doesntExist.email
     }).then(function (keypair) {
@@ -332,11 +333,14 @@ var tests = [
 var arr = tests.slice(0);
 
 function run() {
+  console.log('check 1')
   var test = tests.shift();
   if (!test) {
     console.info('All tests passed');
     return;
   }
+
+  console.log(tests.length)
 
   test().then(run, function (err) {
     var index = arr.length - tests.length - 1;
@@ -349,4 +353,6 @@ function run() {
   });
 }
 
-run();
+setTimeout(function() {
+  run();
+}, 1000);
