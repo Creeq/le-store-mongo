@@ -150,9 +150,9 @@ MongoStore.prototype.getCertificate = function(query, done) {
  * @param {Function} done   MongoDB callback
  */
 MongoStore.prototype.setAccount = function(query, options, done) {
-  this._accounts.findAndModify(query, {
+  this._accounts.findAndModify({query: query, upsert:true}, [], {
     $set: options
-  }, { upsert: true}, done);
+  }, {new: true}, done);
 };
 
 /**

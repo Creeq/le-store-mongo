@@ -6,13 +6,13 @@ module.exports.create = function (options) {
   var was = {};
   if (!was.db) {
     new MongoStore({}, function(err, db) {
+      if (err) return was.err = err;
+      if (!db) return was.err = 'custom error: no db';
       if (db) was.db = db;
     });
   };
 
   var defaults = {};
-
-
 
   var accounts = {
     checkKeypair: function (opts, cb) {
@@ -20,14 +20,14 @@ module.exports.create = function (options) {
       // opts.accountId // optional
 
       // check db and return null or keypair object with one of privateKeyPem or privateKeyJwk
-      was.db && was.db.getAccount(opts, cb);
+      was.db && was.db.getAccount(opts, cb) || console.log(was.err) && process.exit(1);
     }
   , setKeypair: function (opts, keypair, cb) {
       // opts.email // optional
       // opts.accountId // optional
       
       // SAVE to db (as PEM and/or JWK) and index each domain in domains to this keypair
-      was.db && was.db.setAccount(opts, keypair, cb);
+      was.db && was.db.setAccount(opts, keypair, cb) || console.log(was.err) && process.exit(1);
     }
   , check: function (opts, cb) {
       // opts.email // optional
@@ -35,7 +35,7 @@ module.exports.create = function (options) {
       // opts.domains // optional
       
       // return account from db if it exists, otherwise null
-      was.db && was.db.getAccount(opts, cb);
+      was.db && was.db.getAccount(opts, cb) || console.log(was.err) && process.exit(1);
     }
   , set: function (opts, reg, cb) {
       // opts.email
@@ -43,7 +43,7 @@ module.exports.create = function (options) {
       // reg.receipt // response from acme server
       
       
-      was.db && was.db.setAccount(opts, reg, cb);
+      was.db && was.db.setAccount(opts, reg, cb) || console.log(was.err) && process.exit(1);
     }
   };
 
@@ -54,13 +54,13 @@ module.exports.create = function (options) {
       // opts.domains
       
       // check db and return null or keypair object with one of privateKeyPem or privateKeyJwk
-      was.db && was.db.getCertificate(opts, cb);
+      was.db && was.db.getCertificate(opts, cb) || console.log(was.err) && process.exit(1);
     }
   , setKeypair: function (opts, keypair, cb) {
       // opts.domains
       
       // SAVE to db (as PEM and/or JWK) and index each domain in domains to this keypair
-      was.db && was.db.setCertificate(opts, keypair, cb);
+      was.db && was.db.setCertificate(opts, keypair, cb) || console.log(was.err) && process.exit(1);
     }
   , check: function (opts, cb) {
       // You will be provided one of these (which should be tried in this order)
@@ -71,7 +71,7 @@ module.exports.create = function (options) {
       // return certificate PEMs from db if they exist, otherwise null
       // optionally include expiresAt and issuedAt, if they are known exactly
       // (otherwise they will be read from the cert itself later)
-      was.db && was.db.getCertificate(opts, cb);
+      was.db && was.db.getCertificate(opts, cb) || console.log(was.err) && process.exit(1);
     }
   , set: function (opts, pems, cb) {
       // opts.domains
@@ -83,7 +83,7 @@ module.exports.create = function (options) {
       // pems.chain
       
       // SAVE to the database, index the email address, the accountId, and alias the domains
-      was.db && was.db.setCertificate(opts, pems, cb);
+      was.db && was.db.setCertificate(opts, pems, cb) || console.log(was.err) && process.exit(1);
     }
   };
 
