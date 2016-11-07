@@ -48,7 +48,7 @@ function MongoStore(options, done) {
     was.db = db;
     steed.parallel([
       function(cb) {
-        db.collection("certificates", function(err, coll) {
+        was.db.collection("certificates", function(err, coll) {
           was._certificates = coll;
           steed.parallel([
             was._certificates.ensureIndex.bind(was._certificates, "privkey"),
@@ -60,7 +60,7 @@ function MongoStore(options, done) {
         });
       },
       function(cb) {
-        db.collection("accounts", function(err, coll) {
+        was.db.collection("accounts", function(err, coll) {
           was._accounts = coll;
           steed.parallel([
             was._accounts.ensureIndex.bind(was._accounts, "privkey"),
@@ -118,9 +118,9 @@ function MongoStore(options, done) {
  * @param {Function} done   MongoDB callback
  */
 MongoStore.prototype.setCertificate = function(query, options, done) {
-  this._certificates.findAndModify(query, {
+  this.db.collection('certificates').findAndModify(query, {}, {
     $set: options
-  }, { upsert: true}, done);
+  }, {upsert: true, new:true}, done);
 };
 
 /**
@@ -134,7 +134,7 @@ MongoStore.prototype.setCertificate = function(query, options, done) {
  * @param {Function} done MongoDB callback
  */
 MongoStore.prototype.getCertificate = function(query, done) {
-  this._certificates.findOne(query, done);
+  this.db.collection('certificates').findOne(query, done);
 };
 
 /**
@@ -150,9 +150,7 @@ MongoStore.prototype.getCertificate = function(query, done) {
  * @param {Function} done   MongoDB callback
  */
 MongoStore.prototype.setAccount = function(query, options, done) {
-  this._accounts.findAndModify({query: query, upsert:true}, [], {
-    $set: options
-  }, {new: true}, done);
+  this.db.collection('accounts').findAndModify(query, {}, {$set:options}, {upsert: true, new:true}, done);
 };
 
 /**
@@ -166,7 +164,7 @@ MongoStore.prototype.setAccount = function(query, options, done) {
  * @param {Function} done MongoDB callback
  */
 MongoStore.prototype.getAccount = function(query, done) {
-  this._accounts.findOne(query, done);
+  this.db.collection('accounts').findOne(query, done);
 };
 
 /**
