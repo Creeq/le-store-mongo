@@ -26,20 +26,20 @@ var steed = require("steed")();
  *
  * @api public
  * @param {Object} options The options, as describe above.
- * @param {Function} done The callback that will be called
+ * @param {Function} cb The callback that will be called
  *                        when the persistance is ready
  */
-function MongoStore(options, done) {
+function MongoStore(options, cb) {
   if (!(this instanceof MongoStore)) {
-    return new MongoStore(options, done);
+    return new MongoStore(options, cb);
   }
 
   var was = this;
 
   var connected = function(err, db) {
     if (err) {
-      if (done) {
-        return done(err);
+      if (cb) {
+        return cb(err);
       }
       // we have no way of providing an error handler
       throw err;
@@ -72,8 +72,8 @@ function MongoStore(options, done) {
         });
       }
     ], function(err) {
-      if (done) {
-        done(err, was);
+      if (cb) {
+        cb(err, was);
       }
     });
   };
@@ -115,12 +115,12 @@ function MongoStore(options, done) {
  * @api public
  * @param {Object} query    The query as describe above.
  * @param {Object} options  The options as describe above.
- * @param {Function} done   MongoDB callback
+ * @param {Function} cb   MongoDB callback
  */
-MongoStore.prototype.setCertificate = function(query, options, done) {
+MongoStore.prototype.setCertificate = function(query, options, cb) {
   this._certificates.findAndModify(query, {}, {
     $set: options
-  }, {upsert: true, new:true}, done);
+  }, {upsert: true, new:true}, cb);
 };
 
 /**
@@ -131,10 +131,10 @@ MongoStore.prototype.setCertificate = function(query, options, done) {
  *
  * @api public
  * @param {Object} query  The query as describe above.
- * @param {Function} done MongoDB callback
+ * @param {Function} cb MongoDB callback
  */
-MongoStore.prototype.getCertificate = function(query, done) {
-  this._certificates.findOne(query, done);
+MongoStore.prototype.getCertificate = function(query, cb) {
+  this._certificates.findOne(query, cb);
 };
 
 /**
@@ -147,10 +147,10 @@ MongoStore.prototype.getCertificate = function(query, done) {
  * @api public
  * @param {Object} query    The query as describe above.
  * @param {Object} options  The options as describe above.
- * @param {Function} done   MongoDB callback
+ * @param {Function} cb   MongoDB callback
  */
-MongoStore.prototype.setAccount = function(query, options, done) {
-  this._accounts.findAndModify(query, {}, {$set:options}, {upsert: true, new:true}, done);
+MongoStore.prototype.setAccount = function(query, options, cb) {
+  this._accounts.findAndModify(query, {}, {$set:options}, {upsert: true, new:true}, cb);
 };
 
 /**
@@ -161,23 +161,23 @@ MongoStore.prototype.setAccount = function(query, options, done) {
  *
  * @api public
  * @param {Object} query  The query as describe above.
- * @param {Function} done MongoDB callback
+ * @param {Function} cb MongoDB callback
  */
-MongoStore.prototype.getAccount = function(query, done) {
-  this._accounts.findOne(query, done);
+MongoStore.prototype.getAccount = function(query, cb) {
+  this._accounts.findOne(query, cb);
 };
 
 /**
  * Close database
  *
  * @api public
- * @param {Function} done Callback on finish
+ * @param {Function} cb Callback on finish
  */
-MongoStore.prototype.close = function(done) {
+MongoStore.prototype.close = function(cb) {
   if (this.db) {
-    this.db.close(done);
+    this.db.close(cb);
   } else {
-    done();
+    cb();
   }
 };
 
