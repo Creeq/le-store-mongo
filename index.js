@@ -182,13 +182,13 @@ function formattedOptions(options) {
 }
 
 /**
- * Create MongoStore
+ * Create MongoStore, exposes API
  *
  * Valid options include:
  *  - `options`, the db options
  *  - options merged with default settings via MongoStore
  *
- * @api private
+ * @api public
  * @param {Object} options The db options
  * @param {Function} cb The callback that will be called
  *                        when the operation is complete
