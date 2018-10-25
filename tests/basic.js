@@ -1,7 +1,7 @@
 'use strict';
 
 var PromiseA = require('bluebird');
-var leStore = PromiseA.promisifyAll(require('../').create);
+var leStore = PromiseA.promisifyAll(require('../src').create);
 leStore({
   debug: true
 }, function(err, options) {
@@ -107,7 +107,6 @@ leStore({
       return leStore.accounts.setAsync(goodGuy, account).then(function (account) {
         account = account.value;
         if (!account || !account._id || !account.email) {
-          console.log(account)
           throw new Error('accounts.set should return the object with its new `id` attached');
         }
 
@@ -241,12 +240,12 @@ leStore({
           throw new Error("Should return the same account that was saved when retrieved using `accountId`.");
         }
       });
-    }
+    },
 
-    //
-    // Save a cert
-    //
-  , function () {
+    /**
+     * Save a certificate - setup 
+     */
+    function () {
       var certOpts = {
         domains: [ 'example.com', 'www.example.com', 'foo.net', 'bar.foo.net' ]
       , email: goodGuy.email
@@ -254,13 +253,13 @@ leStore({
           cert: 'CERT_A.PEM'
         , privkey: 'PRIVKEY_A.PEM'
         , chain: 'CHAIN_A.PEM'
-        // TODO issuedAt, expiresAt?
-        }
+        },
       };
 
-      return leStore.certificates.setAsync(certOpts, certOpts.certs);
+      leStore.certificates.setAsync(certOpts, certOpts.certs)
+      return Promise.resolve(true)
     }
-    // and another
+    // and another - setup
   , function () {
       var certOpts = {
         domains: [ 'foo.com', 'www.foo.com', 'baz.net', 'bar.baz.net' ]
@@ -272,7 +271,8 @@ leStore({
         }
       };
 
-      return leStore.certificates.setAsync(certOpts, certOpts.certs);
+      leStore.certificates.setAsync(certOpts, certOpts.certs);
+      return Promise.resolve(true)
     }
 
     // basic test (set by email)
@@ -280,44 +280,48 @@ leStore({
       var query = {
         email: goodGuy.email
       };
-      return leStore.certificates.checkAsync(query).then(function (certs) {
+      leStore.certificates.checkAsync(query).then(function (certs) {
         if (!certs || certs.privkey !== 'PRIVKEY_A.PEM') {
-          throw new Error("should have correct certs for example.com (set by email)");
+          throw new Error("should have correct certs for goodguy@gmail.com (set by email)");
         }
       });
+      return Promise.resolve()
     }
     // basic test (set by accountId)
   , function () {
       var query = {
         _id: goodGuy.accountId
       };
-      return leStore.certificates.checkAsync(query).then(function (certs) {
+      leStore.certificates.checkAsync(query).then(function (certs) {
         if (!certs || certs.privkey !== 'PRIVKEY_B.PEM') {
           throw new Error("should have correct certs for example.com (set by email)");
         }
       });
+      return Promise.resolve()
     }
     // altnames test
   , function () {
       var certOpts = {
         domains: [ 'bar.foo.net' ]
       };
-      return leStore.certificates.checkAsync(certOpts).then(function (certs) {
+      leStore.certificates.checkAsync(certOpts).then(function (certs) {
         if (!certs || certs.privkey !== 'PRIVKEY_A.PEM') {
           throw new Error("should have correct certs for bar.foo.net (one of the example.com altnames)");
         }
       });
+      return Promise.resolve()
     }
     // altnames test
   , function () {
       var certOpts = {
         domains: [ 'baz.net' ]
       };
-      return leStore.certificates.checkAsync(certOpts).then(function (certs) {
+      leStore.certificates.checkAsync(certOpts).then(function (certs) {
         if (!certs || certs.privkey !== 'PRIVKEY_B.PEM') {
           throw new Error("should have correct certs for baz.net (one of the foo.com altnames)");
         }
       });
+      return Promise.resolve()
     }
   ];
 
@@ -325,7 +329,6 @@ leStore({
 
   function run() {
     var test = tests.shift();
-    console.log(test)
     if (!test) {
       console.info('All tests passed');
       process.exit(0);
@@ -335,9 +338,11 @@ leStore({
       if (err) {
         var index = arr.length - tests.length;
         console.error('Failed Test #' + index);
+        console.log(`${test}`)
         console.log(err);
         process.exit(1);
       };
+      console.log(`Test ${index} passed`)
     });
   }
 

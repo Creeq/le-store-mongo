@@ -17,154 +17,143 @@ var MongoClient = mongo.MongoClient;
 var steed = require("steed")();
 
 /**
- * MongoDB certificate persistence.
- *
- * The current options include:
- *  - `url`, the connection URL of the database
- *  - `mongo`, all the options for the MongoDB driver.
- *  - `connection`, a MongoDB client to be reused
+ * MongoDB backed certificate store for greenlock
+ * 
+ * Defaults to locally hosted
+ * mongodb instance with no username and password
  *
  * @api public
- * @param {Object} options The options, as describe above.
- * @param {Function} cb The callback that will be called
- *                        when the persistance is ready
+ * @param {Object} options - client options:
+ * @param {String} options.url - the connection URL for the database
+ * @param {Object} mongo options object for the mongo driver
+ * @param {Object} connection a MongoDB client object to be reused
  */
-function MongoStore(options, cb) {
-  if (!(this instanceof MongoStore)) {
-    return new MongoStore(options, cb);
+const MongoStore = async options => {
+  const store = {
   }
 
-  var was = this;
+  /**
+   * Ensure that mongo indexes are created to track document ids, 
+   * certificate keys, certificate related domains, and 
+   * registration emails
+   * 
+   * Call back when the mongo connection has been established
+   * 
+   * @param {String} err - if error occurred connecting, contains reason
+   * @param {Object} db - mongo driver database object
+   */
+  const connected = async dclient => {
+    store.client = dclient
+    store.db = store.client.db(options.dbName)
 
-  var connected = function(err, db) {
-    if (err) {
-      if (cb) {
-        return cb(err);
-      }
-      // we have no way of providing an error handler
-      throw err;
+    try {
+      await steed.parallel([
+        async () => {
+          store._certificates = await store.db.collection(options.certsCollName)
+          await steed.parallel([
+            async () => store._certificates.createIndex("privkey", {background: true}),
+            async () => store._certificates.createIndex("cert", {background: true}),
+            async () => store._certificates.createIndex("domains", {background: true}),
+            async () => store._certificates.createIndex("email", {background: true}),
+            async () => store._certificates.createIndex("accountId", {background: true}),
+          ]);
+        },
+        async () => {
+          store._accounts = await store.db.collection(options.accountsCollName)
+          await steed.parallel([
+            async () => store._accounts.createIndex( "privkey", {background: true}),
+            async () => store._accounts.createIndex( "cert", {background: true}),
+            async () => store._accounts.createIndex( "domains", {background: true}),
+            async () => store._accounts.createIndex( "email", {background: true}),
+            async () => store._accounts.createIndex( "accountId", {background: true}),
+          ]);
+        }
+      ]);
+    } catch (reason) {
+      console.log(reason)
+      throw reason
     }
-
-    was.db = db;
-    steed.parallel([
-      function(cb) {
-        was.db.collection("certificates", function(err, coll) {
-          was._certificates = coll;
-          steed.parallel([
-            was._certificates.ensureIndex.bind(was._certificates, "privkey"),
-            was._certificates.ensureIndex.bind(was._certificates, "cert"),
-            was._certificates.ensureIndex.bind(was._certificates, "domains"),
-            was._certificates.ensureIndex.bind(was._certificates, "email"),
-            was._certificates.ensureIndex.bind(was._certificates, "accountId")
-          ], cb);
-        });
-      },
-      function(cb) {
-        was.db.collection("accounts", function(err, coll) {
-          was._accounts = coll;
-          steed.parallel([
-            was._accounts.ensureIndex.bind(was._accounts, "privkey"),
-            was._accounts.ensureIndex.bind(was._accounts, "cert"),
-            was._accounts.ensureIndex.bind(was._accounts, "domains"),
-            was._accounts.ensureIndex.bind(was._accounts, "email"),
-            was._accounts.ensureIndex.bind(was._accounts, "accountId")
-          ], cb);
-        });
-      }
-    ], function(err) {
-      if (cb) {
-        cb(err, was);
-      }
-    });
   };
 
-  // Connect to the db
-  if (options.connection) {
-    connected(null, options.connection);
+  // Connect to the db if connection not provided
+  if (options.client) {
+    connected(options.client);
   } else {
-    options.url = options.url || 'mongodb://localhost:27017/letsencrypt-node';
-    options.mongo = options.mongo || {
-                                                  "db": {
-                                                      "native_parser": true
-                                                  },
-                                                  "server": {
-                                                      "socketOptions": {
-                                                          "connectTimeoutMS": 1000,
-                                                          "keepAlive": 1
-                                                      },
-                                                      "auto_reconnect": true
-                                                  },
-                                                  "replset": {
-                                                      "socketOptions": {
-                                                          "keepAlive": 1,
-                                                          "connectTimeoutMS": 1000
-                                                      }
-                                                  }
-                                              }
-    MongoClient.connect(options.url, options.mongo, connected);
+    options.url = options.url || 'mongodb://localhost:27017/greenlock';
+    options.dbName = options.dbName || 'greenlock'
+    options.certsCollName = options.certsCollName || 'certificates'
+    options.accountsCollName = options.accountsCollName || 'accounts'
+    options.mongo = options.mongo || 
+    {
+      "connectTimeoutMS": 1000,
+      "keepAlive": 1,
+      "autoReconnect": true,
+      "useNewUrlParser": true
+    }
+    
+    connected(await MongoClient.connect(options.url, options.mongo));
+  }
+
+  console.log('Returning store')
+  return {
+    getAccount: getAccount(store),
+    setAccount: setAccount(store),
+    getCertificate: getCertificate(store),
+    setCertificate: setCertificate(store),
+    close: close(store)
   }
 }
 
 /**
- * Setter Certificates
- *
- * The current options include:
- *  - `query`,   query values if any
- *  - `options`, setter values
+ * Update or insert new certificate document and return the
+ * updated document
  *
  * @api public
- * @param {Object} query    The query as describe above.
- * @param {Object} options  The options as describe above.
- * @param {Function} cb   MongoDB callback
+ * @param {Object} query    the mongo query object
+ * @param {Object} options  fields to set
+ * @param {Function} cb     callback with result (null if not found)
  */
-MongoStore.prototype.setCertificate = function(query, options, cb) {
-  this._certificates.findAndModify(query, {}, {
-    $set: options
-  }, {upsert: true, new:true}, cb);
+const setCertificate = store => async function (query, certs) {
+
+  // mongo cli uses returnNewDocument: true but node native driver uses returnOriginal: false! 
+  return store._certificates.findOneAndUpdate(query, {$set: certs, $setOnInsert:  {created: new Date()}}, 
+    {upsert: true, returnNewDocument:true, returnOriginal: false});
 };
 
 /**
- * Getter Certificates
- *
- * The current options include:
- *  - `query`, query values
+ * Get one certificate document by any of its fields
  *
  * @api public
- * @param {Object} query  The query as describe above.
- * @param {Function} cb MongoDB callback
+ * @param {Object} query  mongo query object
+ * @param {Function} cb   callback with result (null if not found)
  */
-MongoStore.prototype.getCertificate = function(query, cb) {
-  this._certificates.findOne(query, cb);
+const getCertificate = store => async function(query) {
+  query.domains && Array.isArray(query.domains) && (query.domains = {$in: query.domains})
+  return store._certificates.findOne({});
 };
 
 /**
- * Setter Accounts
- *
- * The current options include:
- *  - `query`,   query values if any
- *  - `options`, setter values
+ * Update or insert account and return the modified document
  *
  * @api public
- * @param {Object} query    The query as describe above.
- * @param {Object} options  The options as describe above.
- * @param {Function} cb   MongoDB callback
+ * @param {Object} query    mongo query object
+ * @param {Object} options  fields to update
+ * @param {Function} cb     callback with result
  */
-MongoStore.prototype.setAccount = function(query, options, cb) {
-  this._accounts.findAndModify(query, {}, {$set:options}, {upsert: true, new:true}, cb);
+const setAccount = store => function(query, options, cb) {
+  // mongo cli uses returnNewDocument: true but node native driver uses returnOriginal: false! 
+  store._accounts.findOneAndUpdate(query, {$set: options, $setOnInsert:  {created: new Date()}}, {upsert: true, returnNewDocument:true, returnOriginal: false}, cb);
 };
 
 /**
- * Getter Accounts
- *
- * The current options include:
- *  - `query`, query values
+ * Search for account by arbitrary fields
  *
  * @api public
- * @param {Object} query  The query as describe above.
- * @param {Function} cb MongoDB callback
+ * @param {Object} query  The mongo query object
+ * @param {Function} cb   callback with result (null if not found)
  */
-MongoStore.prototype.getAccount = function(query, cb) {
-  this._accounts.findOne(query, cb);
+const getAccount = store => async function(query, cb) {
+  return await store._accounts.findOne(query, cb);
 };
 
 /**
@@ -173,11 +162,9 @@ MongoStore.prototype.getAccount = function(query, cb) {
  * @api public
  * @param {Function} cb Callback on finish
  */
-MongoStore.prototype.close = function(cb) {
-  if (this.db) {
-    this.db.close(cb);
-  } else {
-    cb();
+const close = store => async function() {
+  if (store.db) {
+    store.db.close(cb);
   }
 };
 
