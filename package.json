@@ -1,14 +1,18 @@
 {
   "name": "le-store-mongo",
   "version": "1.0.0",
-  "description": "distributed and/or local persistence for letsencrypt-node",
+  "description": "distributed and/or local persistence for greenlock",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"one\" && exit 0;"
+    "start": "node dist",
+    "dev": "node ./src",
+    "compile": "babel -d dist/ src/",
+    "build": "rimraf dist && babel src -D --out-dir dist",
+    "test": "nodemon --watch . --exec \"node -r babel-register\" ./tests/basic.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Daplie/le-store-mongo.git"
+    "url": "git+https://github.com/chanoch/le-store-mongo.git"
   },
   "keywords": [
     "letsencrypt-express",
@@ -19,12 +23,21 @@
   "author": "Rex Fatahi <rex@aug2uag.com>, AJ ONeal <coolaj86@gmail.com>",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Daplie/le-store-mongo/issues"
+    "url": "https://github.com/chanoch/le-store-mongo/issues"
   },
-  "homepage": "https://github.com/Daplie/le-store-mongo#readme",
+  "homepage": "https://github.com/chanoch/le-store-mongo#readme",
   "dependencies": {
+    "babel-core": "^6.26.3",
+    "babel-preset-env": "^1.7.0",
+    "babel-register": "^6.26.0",
     "bluebird": "^3.4.1",
-    "mongodb": "^2.2.5",
-    "steed": "^1.1.3"
+    "mongodb": "^3.1.8",
+    "rimraf": "^2.6.2",
+    "steed": "^1.1.3",
+    "version-bump-prompt": "^4.2.1"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "nodemon": "^1.18.4"
   }
 }

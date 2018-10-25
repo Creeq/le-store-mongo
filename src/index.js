@@ -12,9 +12,8 @@ OTHER DEALINGS IN THE SOFTWARE.
 */
 "use strict";
 
-var MongoStore = require('./src/mongostore');
+const MongoStore = require('./mongostore');
 var was = {};
-
 
 was.accounts = {
   /**
@@ -26,14 +25,16 @@ was.accounts = {
    *
    * @api public
    * @param {Object} opts The query options, as describe above
-   * @param {Function} cb The callback that will be called
-   *                        when the operation is complete
+   * @param {Object} opts The query options, as describe above
+   * @param {Object} opts The query options, as describe above
+   * @param {Object} opts The query options, as describe above
+   * @param {Function} cb - cb()
    */
   checkKeypair: function (opts, cb) {
     was.db && was.db.getAccount(opts, cb);
   }, 
   /**
-   * SAVE to db (as PEM and/or JWK) and index each domain in domains to this keypair
+   * Save cert keypairs to db (as PEM and/or JWK)
    *
    * Valid options include:
    *  - `opts.email`, the email of query
@@ -47,7 +48,7 @@ was.accounts = {
    *                        when the operation is complete
    */
   setKeypair: function (opts, keypair, cb) {
-    was.db && was.db.setAccount(opts, {keypair:keypair}, cb);
+      was.db && was.db.setAccount(opts, {keypair:keypair}, cb);
   }, 
   /**
    * Return account from db if it exists, otherwise null
@@ -66,23 +67,23 @@ was.accounts = {
     was.db && was.db.getAccount(opts, cb);
   }, 
   set: function (opts, reg, cb) {
-  /**
-   * Set keypair or receipts
-   *
-   * Valid options include:
-   *  - `opts.email`, the email of query
-   *  - `opts.accountId`, the accountId of query
-   *  - `opts.domains`, query by domains
-   *  - `reg.keypair`, values to set
-   *  - `reg.receipt`, values to set
-   *
-   * @api public
-   * @param {Object} opts The query options, as describe above
-   * @param {Object} reg The setter values
-   * @param {Function} cb The callback that will be called
-   *                        when the operation is complete
-   */
-    was.db && was.db.setAccount(opts, reg, cb);
+    /*
+    * Set keypair or receipts
+    *
+    * Valid options include:
+    *  - `opts.email`, the email of query
+    *  - `opts.accountId`, the accountId of query
+    *  - `opts.domains`, query by domains
+    *  - `reg.keypair`, values to set
+    *  - `reg.receipt`, values to set
+    *
+    * @api public
+    * @param {Object} opts The query options, as describe above
+    * @param {Object} reg The setter values
+    * @param {Function} cb The callback that will be called
+    *                        when the operation is complete
+    */
+      was.db && was.db.setAccount(opts, reg, cb);
   }
 }
 
@@ -104,7 +105,7 @@ was.certificates = {
   }, 
   setKeypair: function (opts, keypair, cb) {
   /**
-   * SAVE certificates to db
+   * SAVE certificate keypairs to db
    *
    * Valid options include:
    *  - `opts.email`, the email of query
@@ -119,15 +120,15 @@ was.certificates = {
    */
     was.db && was.db.setCertificate(opts, {keypair:keypair}, cb);
   }, 
-  check: function (opts, cb) {
+  check: async (query, cb) => {
   /**
    * Return certificates from db if it exists, otherwise null
    *
    * Valid option values for query include:
-   *  - `opts.email`, the email of query
-   *  - `opts.accountId`, the accountId of query
-   *  - `opts.domains`, query by domains
-   *  - return certificate PEMs from db if they exist, otherwise null
+   *  - `query.email`, the email of query
+   *  - `query.accountId`, the accountId of query
+   *  - `query.domains`, query by domains
+   *  - return certificate keys from db if they exist, otherwise null
    *  - optionally include expiresAt and issuedAt, if they are known exactly
    *  - (otherwise they will be read from the cert itself later)
    *
@@ -136,28 +137,30 @@ was.certificates = {
    * @param {Function} cb The callback that will be called
    *                        when the operation is complete
    */
-    was.db && was.db.getCertificate(opts, cb);
+    if(!was.db) return cb(null)
+    var certificate = await was.db.getCertificate(query);
+    cb(certificate)
   }, 
-  set: function (opts, pems, cb) {
+  set: async (query, certs, cb) => {
   /**
-   * Set certificates
+   * Save certificates to the store
    *
    * Valid options include:
-   *  - `opts.email`, the email of query
    *  - `opts.accountId`, the accountId of query
-   *  - `opts.domains`, query by domains
-   *  - `pems.privkey`, setter values
-   *  - `pems.cert`, setter values
-   *  - `pems.chain`, setter values
    *  - SAVE to the database, index the email address, the accountId, and alias the domains
    *
    * @api public
-   * @param {Object} opts The query options, as describe above
-   * @param {Object} pems The setter values
+   * @param {Object} query         The certificate details:
+   * @param {Object} query.certs     certificate keys including public and private pem and private jwk 
+   * @param {Object} query.domains   array of associated domains
+   * @param {Object} query.email     email address for cert expiry notifications (optional in ACME but required in greenlock)   * 
    * @param {Function} cb The callback that will be called
    *                        when the operation is complete
    */
-    was.db && was.db.setCertificate(opts, pems, cb);
+    
+    if(!was.db) return cb(null)
+    var result = await was.db.setCertificate(query, {certs: certs});
+    return cb(result)
   }
 }
 
@@ -171,7 +174,7 @@ was.certificates = {
  * @api private
  * @param {Object} options The db options
  */
-function formattedOptions(options) {
+function leStore(options) {
   return {
     getOptions: function () {
       return options;
@@ -179,6 +182,10 @@ function formattedOptions(options) {
     accounts: was.accounts, 
     certificates: was.certificates
   };
+}
+
+const connect = async function(options) {
+  return await MongoStore(options)
 }
 
 /**
@@ -193,17 +200,19 @@ function formattedOptions(options) {
  * @param {Function} cb The callback that will be called
  *                        when the operation is complete
  */
-module.exports.create = function(options, cb) {
-  if (was.db) {
-    cb(null, formattedOptions(options));
-  } else {
-    new MongoStore(options, function(err, db) {
-      if (err || !db) was.err = {
+module.exports.create = async function (options, cb) {
+
+  if (!was.db) {
+    try {
+      was.db = await connect(options)
+      console.log(was.db)      
+    } catch (err) {
+      was.err = {
         code: 500,
-        message: 'no database created'
+        message: `no database created ${err}`
       }
-      else was.db = db;
-      cb(was.err, formattedOptions(options));
-    });
+    }
   }
+  const store = leStore(options)
+  return cb ? cb(was.err, store) : store;
 }
